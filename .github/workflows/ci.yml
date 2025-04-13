@@ -1,21 +1,24 @@
-name: CI on Pull Request
+name: CI for text-only project
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, closed]
 
 jobs:
-  build:
+  check-pr:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+      - name: Check for .txt files
+        run: |
+          echo "📝 Danh sách các file txt trong PR:"
+          git diff --name-only origin/main | grep '\.txt$' || echo "❌ Không có file .txt nào"
 
-      - name: Build with Maven
-        run: mvn clean install
+      - name: Notify Slack on merge
+        if: github.event.pull_request.merged == true
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"✅ PR `'"${{ github.event.pull_request.title }}"'` đã được merge. Các file .txt đã được cập nhật."}' \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
